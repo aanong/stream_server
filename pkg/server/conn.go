@@ -1,27 +1,33 @@
 package server
 
 import (
-	"github.com/chuckpreslar/emission"
-	"github.com/gorilla/websocket"
+	"errors"
 	"net"
 	"stream_server/pkg/util"
 	"sync"
 	"time"
+
+	"github.com/chuckpreslar/emission"
+	"github.com/gorilla/websocket"
 )
 
-const ping = 5 * time.Second
+const pingPeriod = 5 * time.Second
 
 type WebSocketConn struct {
 	emission.Emitter
+
 	socket *websocket.Conn
-	mutex  sync.Mutex
+
+	mutex *sync.Mutex
+
 	closed bool
 }
 
-func newWebSocket(socket *websocket.Conn) *WebSocketConn {
-	var conn WebSocketConn
-	conn.Emitter = *emission.NewEmitter()
+func NewWebSocketConn(socket *websocket.Conn) *WebSocketConn {
 
+	var conn WebSocketConn
+
+	conn.Emitter = *emission.NewEmitter()
 	conn.socket = socket
 	conn.mutex = new(sync.Mutex)
 	conn.closed = false
@@ -31,22 +37,24 @@ func newWebSocket(socket *websocket.Conn) *WebSocketConn {
 		conn.closed = true
 		return nil
 	})
-	return &conn
 
+	return &conn
 }
 
 func (conn *WebSocketConn) ReadMessage() {
+
 	in := make(chan []byte)
 
 	stop := make(chan struct{})
 
-	pingTicker := time.NewTicker(ping)
+	pingTicker := time.NewTicker(pingPeriod)
 
 	var c = conn.socket
 
 	go func() {
 		for {
 			_, message, err := c.ReadMessage()
+
 			if err != nil {
 				util.Warnf("获取错误:%v", err)
 
@@ -62,7 +70,6 @@ func (conn *WebSocketConn) ReadMessage() {
 			}
 			in <- message
 		}
-
 	}()
 
 	for {
@@ -92,4 +99,26 @@ func (conn *WebSocketConn) ReadMessage() {
 
 	}
 
+}
+
+func (conn *WebSocketConn) Send(message string) error {
+	util.Infof("发送数据:%s", message)
+	conn.mutex.Lock()
+	defer conn.mutex.Unlock()
+	if conn.closed {
+		return errors.New("websocket: write closed")
+	}
+	return conn.socket.WriteMessage(websocket.TextMessage, []byte(message))
+}
+
+func (conn *WebSocketConn) Close() {
+	conn.mutex.Lock()
+	defer conn.mutex.Unlock()
+	if conn.closed == false {
+		util.Infof("关闭WebSocket连接:", conn)
+		conn.socket.Close()
+		conn.closed = true
+	} else {
+		util.Infof("连接已关闭:", conn)
+	}
 }
