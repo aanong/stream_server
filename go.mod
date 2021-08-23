@@ -2,14 +2,13 @@ module stream_server
 go 1.12
 
 require (
-	//事件发射器
 	github.com/chuckpreslar/emission v0.0.0-20170206194824-a7ddd980baf9
-	//websocket
-	github.com/gorilla/websocket v1.4.1
-	//日志处理
-	github.com/rs/zerolog v1.18.0
+    github.com/gorilla/websocket v1.4.1
+    github.com/pion/rtcp v1.2.6
+    github.com/pion/rtp v1.6.1
+    github.com/pion/webrtc/v2 v2.0.16
+    github.com/pion/webrtc/v3 v3.0.0-beta.16
+    github.com/rs/zerolog v1.19.0
+    gopkg.in/ini.v1 v1.51.1
 
-	github.com/smartystreets/goconvey v1.6.4 // indirect
-	//配置文件
-	gopkg.in/ini.v1 v1.51.1
 )
