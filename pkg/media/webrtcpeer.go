@@ -46,3 +46,7 @@ func (p *WebRTCPeer) AnswerReceiver(offer webrtc.SessionDescription,addVideoTrac
 	//TODO
 
 }
+
+func (p *WebRTCPeer) SendPli()  {
+	// TODO
+}
