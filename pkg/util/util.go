@@ -2,7 +2,6 @@ package util
 
 import "encoding/json"
 
-// map >> string
 func Marshal(m map[string]interface{}) string {
 	if byt, err := json.Marshal(m); err != nil {
 		Errorf(err.Error())
@@ -12,7 +11,6 @@ func Marshal(m map[string]interface{}) string {
 	}
 }
 
-//string >> map
 func Unmarshal(str string) (map[string]interface{}, error) {
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(str), &data); err != nil {

@@ -1,11 +1,11 @@
 package main
 
 import (
+	"conference/pkg/room"
+	"conference/pkg/server"
+	"conference/pkg/util"
 	"gopkg.in/ini.v1"
 	"os"
-	"stream_server/pkg/room"
-	"stream_server/pkg/server"
-	"stream_server/pkg/util"
 )
 
 func main() {

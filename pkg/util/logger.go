@@ -1,9 +1,10 @@
 package util
 
 import (
-	"github.com/rs/zerolog"
 	"os"
 	"time"
+
+	"github.com/rs/zerolog"
 )
 
 var log zerolog.Logger
@@ -11,31 +12,28 @@ var log zerolog.Logger
 type Level uint8
 
 const (
-	//调试
-	DebugLevel Level = iota
-	//
+	DebugLevle Level = iota
+
 	InfoLevel
-	//警告
+
 	WarnLevel
-	//错误
+
 	ErrorLevel
-	//致命
-	FatalLevel
-	//
+
+	FatalLEvel
+
 	PanicLevel
-	//
+
 	NoLevel
-	//
+
 	Disabled
 )
 
 func init() {
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339}
-
 	log = zerolog.New(output).With().Timestamp().Logger()
-
-	SetLevel(DebugLevel)
+	SetLevel(DebugLevle)
 }
 
 func SetLevel(l Level) {

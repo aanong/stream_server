@@ -1,9 +1,9 @@
 package room
 
 import (
+	"conference/pkg/server"
+	"conference/pkg/util"
 	"github.com/chuckpreslar/emission"
-	"stream_server/pkg/server"
-	"stream_server/pkg/util"
 )
 
 type User struct {

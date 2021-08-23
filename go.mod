@@ -1,4 +1,4 @@
-module stream_server
+module conference
 go 1.12
 
 require (

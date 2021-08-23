@@ -1,24 +1,20 @@
 package media
 
 import (
+	"conference/pkg/util"
+	"io"
+
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
+	"github.com/pion/rtp/codecs"
 	"github.com/pion/webrtc/v2"
-	"stream_server/pkg/util"
+	"github.com/pion/webrtc/v2/pkg/media/samplebuilder"
 )
 
-
-var (
-	webRTCengine *WebRTCEngine
-)
-
-//实例化
-func init()  {
-	webRTCengine = NewWebRTCEngine()
-}
-
-var defaultPeerCfg =webrtc.Configuration{
-	ICEServers : []webrtc.ICEServer{
+var defaultPeerCfg = webrtc.Configuration{
+	ICEServers: []webrtc.ICEServer{
 		{
-			URLs:[] string {"stun:stun.stunprotocol.org:3478"},
+			URLs: []string{"stun:stun.stunprotocol.org:3478"},
 		},
 	},
 }
@@ -36,9 +32,10 @@ type WebRTCEngine struct {
 	api *webrtc.API
 }
 
-func NewWebRTCEngine() *WebRTCEngine  {
-	urls:= []string{}
-	w :=&WebRTCEngine{
+func NewWebRTCEngine() *WebRTCEngine {
+	urls := []string{} //conf.SFU.Ices//[]string{"stun:stun.stunprotocol.org:3478"};//conf.SFU.Ices
+
+	w := &WebRTCEngine{
 		mediaEngine: webrtc.MediaEngine{},
 		cfg: webrtc.Configuration{
 			SDPSemantics: webrtc.SDPSemanticsUnifiedPlanWithFallback,
@@ -49,12 +46,13 @@ func NewWebRTCEngine() *WebRTCEngine  {
 			},
 		},
 	}
-	w.mediaEngine.RegisterCodec(webrtc.NewRTPVP8Codec(webrtc.DefaultPayloadTypeVP8,90000))
-	w.mediaEngine.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus,48000))
+
+	w.mediaEngine.RegisterCodec(webrtc.NewRTPVP8Codec(webrtc.DefaultPayloadTypeVP8, 90000))
+	w.mediaEngine.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000))
 	w.api = webrtc.NewAPI(webrtc.WithMediaEngine(w.mediaEngine))
 	return w
-
 }
+
 //创建发送数据对象 朝接收者发送数据
 func (s WebRTCEngine) CreateSender(offer webrtc.SessionDescription, pc **webrtc.PeerConnection, addVideoTrack, addAudioTrack **webrtc.Track, stop chan int) (answer webrtc.SessionDescription, err error) {
 
@@ -104,8 +102,84 @@ func (s WebRTCEngine) CreateReceiver(offer webrtc.SessionDescription, pc **webrt
 	//监听OnTrack事件
 	(*pc).OnTrack(func(remoteTrack *webrtc.Track, receiver *webrtc.RTPReceiver) {
 
+		//视频处理
+		if remoteTrack.PayloadType() == webrtc.DefaultPayloadTypeVP8 ||
+			remoteTrack.PayloadType() == webrtc.DefaultPayloadTypeVP9 ||
+			remoteTrack.PayloadType() == webrtc.DefaultPayloadTypeH264 {
+			//根据remoteTrack创建一个VideoTrack赋值给videoTrack
+			*videoTrack, err = (*pc).NewTrack(remoteTrack.PayloadType(), remoteTrack.SSRC(), "video", remoteTrack.Label())
 
+			go func() {
+				for {
+					select {
+					case <-pli:
+						//PictureLossIndication 关键帧丢包重传,参考rfc4585  SSRC同步源标识符
+						(*pc).WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: remoteTrack.SSRC()}})
+					case <-stop:
+						return
+					}
+				}
+			}()
+			//rtp解包
+			var pkt rtp.Depacketizer
+			//判断视频编码
+			if remoteTrack.PayloadType() == webrtc.DefaultPayloadTypeVP8 {
+				//使用VP8编码
+				pkt = &codecs.VP8Packet{}
+			} else if remoteTrack.PayloadType() == webrtc.DefaultPayloadTypeVP9 {
+				util.Errorf("TODO codecs.VP9Packet")
+			} else if remoteTrack.PayloadType() == webrtc.DefaultPayloadTypeH264 {
+				util.Errorf("TODO codecs.H264Packet")
+			}
 
+			builder := samplebuilder.New(averageRtpPacketsPerFrame*5, pkt)
+			for {
+				select {
+
+				case <-stop:
+					return
+				default:
+					//读取RTP包
+					rtp, err := remoteTrack.ReadRTP()
+					if err != nil {
+						if err == io.EOF {
+							return
+						}
+						util.Errorf(err.Error())
+					}
+
+					//将RTP包放入builder对象里
+					builder.Push(rtp)
+					//迭代数据
+					for s := builder.Pop(); s != nil; s = builder.Pop() {
+						//向videoTrack里写入数据
+						if err := (*videoTrack).WriteSample(*s); err != nil && err != io.ErrClosedPipe {
+							util.Errorf(err.Error())
+						}
+					}
+				}
+			}
+			//音频处理
+		} else {
+			*audioTrack, err = (*pc).NewTrack(remoteTrack.PayloadType(), remoteTrack.SSRC(), "audio", remoteTrack.Label())
+
+			rtpBuf := make([]byte, 1400)
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					//读取音频数据
+					i, err := remoteTrack.Read(rtpBuf)
+					if err == nil {
+						//将音频数据写入audioTrack
+						(*audioTrack).Write(rtpBuf[:i])
+					} else {
+						util.Infof(err.Error())
+					}
+				}
+			}
+		}
 	})
 
 	//设置远端SDP

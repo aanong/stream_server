@@ -1,13 +1,13 @@
 package room
 
 import (
+	"conference/pkg/media"
+	"conference/pkg/server"
+	"conference/pkg/util"
 	"encoding/json"
 	"github.com/pion/webrtc/v2"
 	"log"
 	"net/http"
-	"stream_server/pkg/media"
-	"stream_server/pkg/server"
-	"stream_server/pkg/util"
 	"sync"
 	"time"
 )

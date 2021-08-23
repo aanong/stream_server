@@ -1,26 +1,39 @@
 package server
 
 import (
-	"github.com/gorilla/websocket"
+	"conference/pkg/util"
 	"net/http"
 	"strconv"
-	"stream_server/pkg/util"
+
+	"github.com/gorilla/websocket"
 )
 
+//服务配置
 type SFUServerConfig struct {
-	Host          string
-	Port          int
-	CertFile      string
-	KeyFile       string
-	HTMLRoot      string
+	//IP
+	Host string
+	//端口
+	Port int
+	//Cert文件
+	CertFile string
+	//Key文件
+	KeyFile string
+	//Html根目录
+	HTMLRoot string
+	//WebSocket路径
 	WebSocketPath string
 }
 
+//默认WebSocket服务配置
 func DefaultConfig() SFUServerConfig {
 	return SFUServerConfig{
-		Host:          "0.0.0.0",
-		Port:          8000,
-		HTMLRoot:      "html",
+		//IP
+		Host: "0.0.0.0",
+		//端口
+		Port: 8000,
+		//Html根目录
+		HTMLRoot: "html",
+		//WebSocket路径
 		WebSocketPath: "/ws",
 	}
 }

@@ -1,9 +1,10 @@
 package media
 
 import (
-	"github.com/pion/webrtc/v2"
-	"stream_server/pkg/util"
+	"conference/pkg/util"
 	"time"
+
+	"github.com/pion/webrtc/v2"
 )
 
 var (
